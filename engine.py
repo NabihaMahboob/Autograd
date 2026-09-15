@@ -33,7 +33,7 @@ class Value:
 
     def __pow__(self, other):
         assert isinstance(other, (int, float))
-        output = Value(self.data ** other, (self,), '**')
+        output = Value(self.data ** other, (self,), f'**{other}')
         def _backward():
             self.grad += output.grad * other * self.data ** (other-1)
 
@@ -65,10 +65,10 @@ class Value:
         return (-self) + other
 
     def __rtruediv__(self, other):
-            return other * (self**-1)
+        return other * (self**-1)
 
     def __neg__(self):
-            return self * -1
+        return self * -1
     
     def __repr__(self):
         return f"{self.data}"
@@ -91,11 +91,3 @@ class Value:
         for node in reversed(topo):
             node._backward()
          
-
-x = Value(2.0)
-t = x.tanh()
-
-t.backward()
-
-print(t.data)
-print(x.grad)
