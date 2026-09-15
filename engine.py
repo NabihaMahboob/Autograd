@@ -1,51 +1,101 @@
+import math
+
 class Value:
     def __init__(self, data, _children=(), operation=''):
         self.data = data
         self.grad = 0.0
         self._prev = set(_children)
-        self.operation = operation
-        self.backward = lambda: None
+        self._operation = operation
+        self._backward = lambda: None
 
     def __add__(self, other):
+        if not isinstance(other, Value):
+            other = Value(other)
         output = Value(self.data + other.data, (self, other), '+')
 
         def _backward():
             self.grad += output.grad
             other.grad += output.grad
 
-        output.backward = _backward
+        output._backward = _backward
         return output
     
-
-        
-
     def __mul__(self, other):
+        if not isinstance(other, Value):
+            other = Value(other)
         output = Value(self.data * other.data, (self, other), '*')
         def _backward():
             self.grad += output.grad * other.data
             other.grad += output.grad * self.data
 
-        output.backward = _backward
+        output._backward = _backward
         return output
-        
 
+    def __pow__(self, other):
+        assert isinstance(other, (int, float))
+        output = Value(self.data ** other, (self,), '**')
+        def _backward():
+            self.grad += output.grad * other * self.data ** (other-1)
+
+        output._backward = _backward
+        return output
+
+    def tanh(self):
+        output = Value(math.tanh(self.data), (self,), 'tanh')
+
+        def _backward():
+            self.grad += output.grad * (1-output.data**2)
+
+        output._backward = _backward
+        return output
+
+    def __sub__(self, other):
+        return self + (-other)
+
+    def __truediv__(self, other):
+        return self * (other**-1)
+        
+    def __radd__(self, other):
+        return self + other
+
+    def __rmul__(self, other):
+        return self * other
+
+    def __rsub__(self, other):
+        return (-self) + other
+
+    def __rtruediv__(self, other):
+            return other * (self**-1)
+
+    def __neg__(self):
+            return self * -1
+    
     def __repr__(self):
         return f"{self.data}"
-    
 
-a = Value(2.0)
-b = Value(3.0)
 
-c = a + b
-d = a * b
+    def backward(self):
+        topo = []
+        visited = set()
 
-print(c)   
-print(d)
-print(c._prev)
-print(c.operation)
+        def build_topo(v):
+            if v not in visited:
+                visited.add(v)
+                for child in v._prev:
+                    build_topo(child)
+                topo.append(v)
 
-e = (a + b) * b
+        build_topo(self)
+        self.grad = 1.0
 
-print(e)
-print(e.operation)
-print(e._prev)
+        for node in reversed(topo):
+            node._backward()
+         
+
+x = Value(2.0)
+t = x.tanh()
+
+t.backward()
+
+print(t.data)
+print(x.grad)
